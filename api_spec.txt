@@ -34,10 +34,12 @@ Core-Requirements :
         curl --location --request GET 'http://localhost:8080/transactionService/types/cash'
 
     Response :
-        [
-            1122,
-            1124
-        ]
+        [{
+                    "transactionId": 1123,
+                    "value": 100,
+                    "type": "testing123",
+                    "parentId": 1121
+        }]
 
 4. Get Sum of Connected Transactions :
     Request :

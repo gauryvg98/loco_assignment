@@ -1,4 +1,4 @@
-curl --location --request PUT 'http://localhost:8080/transactionService/transaction/1120' \
+curl --location --request PUT 'https://transaction-service-loco.herokuapp.com/transactionService/transaction/1120' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "value":10,
@@ -9,7 +9,7 @@ curl --location --request PUT 'http://localhost:8080/transactionService/transact
 }'
 
 
-curl --location --request PUT 'http://localhost:8080/transactionService/transaction/1121' \
+curl --location --request PUT 'https://transaction-service-loco.herokuapp.com/transactionService/transaction/1121' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "value":100,
@@ -20,7 +20,7 @@ curl --location --request PUT 'http://localhost:8080/transactionService/transact
 }'
 
 
-curl --location --request PUT 'http://localhost:8080/transactionService/transaction/1122' \
+curl --location --request PUT 'https://transaction-service-loco.herokuapp.com/transactionService/transaction/1122' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "value":1000,
@@ -30,7 +30,7 @@ curl --location --request PUT 'http://localhost:8080/transactionService/transact
     "parentId":1120
 }'
 
-curl --location --request PUT 'http://localhost:8080/transactionService/transaction/1123' \
+curl --location --request PUT 'https://transaction-service-loco.herokuapp.com/transactionService/transaction/1123' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "value":10000,

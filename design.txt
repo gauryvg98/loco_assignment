@@ -18,7 +18,7 @@ If this is not the case, we would need to add a uniqueness constraint on the tra
 2. Transactions are inserted in the order they would appear in the hierarchy tree, i.e, no parent is to be inserted after a child.
 Another way to put this would be that the parent should already be present in the db before a child is inserted.
 
-3.
+3. API specifications given in problem statement are guidelines.
 
 Iterations in design :
 
