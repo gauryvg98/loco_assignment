@@ -10,5 +10,56 @@ Random thoughts during dev :
 
 -> Need to handle CORS on server-side. -> done
 
+Assumptions :
+
+1. TransactionId is unique, and no repeating transactionIds are going to be passed.
+If this is not the case, we would need to add a uniqueness constraint on the transactionId column in `transactions` table.
+
+2. Transactions are inserted in the order they would appear in the hierarchy tree, i.e, no parent is to be inserted after a child.
+Another way to put this would be that the parent should already be present in the db before a child is inserted.
+
+3.
+
+Iterations in design :
+
+Inserting a transaction, fetching a transaction and filtering transactions on some property,
+these requirements are simple and can be handled through a single table which stores the transaction entities.
+
+There are multiple ways we can handle the connected-sum-query requirement.
+
+Approach 1 :
+Since this relationship essentially represents an n-ary tree, where each node can have any number of children,
+We can recursively query the table on parent_id = curr_id, which would return us a list of all (grand^n)children of a transactionId,
+and we then add their values to get the result.
+But this, in practise, would require a large number of sql queries proportional to the depth of the hierarchy tree to fetch this data.
+
+Drawbacks :
+    Not scalable.
+    In the worst case, when each transaction is connected to one child transaction, number of sequel queries would be order of number of transactions in the table.
+
+Approach 2 :
+A better solution would be to store the path from parent to a node along with the transaction itself.
+So in this scenario, when the save transaction API is called, we fetch the parent transaction, and fetch its path to root.
+We append parent_id to the parent's path to get the path of the child. Our path would look something like : "/1/2/3/".
+
+Now when we want to query for connected transactions, we just query the transactions for paths containing the given transactionId.
+MySQL for this would be : SELECT * FROM TRANSACTIONS WHERE path like '%/{txnId}/%';
+
+This essentially reduces the number of sequel queries to two during sum-query (initial design upper bounded this to O of (depth of hierarchy tree)
+
+Drawbacks:
+    While we reduce the number of queries to fetch connected children vs approach 1, we also need to generate the path during save which is done by fetching the parent transaction.
+    This means we end up using a fetch and an insert queries instead of a single insert query as in approach 1.
+    Another possible issue with this approach would be data-replication.
+    In case of large number of connected transactions, this possibly huge path column would be replicated across children of a parent transaction.
+    Also, like queries which are unbounded-from-start (like '%someval') cannot be optimized using standard column indices, they require FULLTEXT index creations,
+    which inherently increase the disk and memory space, and also makes incoming writes slower.
+
+Approach 2.5 / 3 :
+    If we vertically partition the table in Approach-2, such that we extract the path-to-parent (lets call this flatPath) to a separate table (called transaction_links),
+    we can handle data duplication by having a many-to-one relation between `transactions` and `transaction_links`.
+
+    We add a link_id column to `transactions` which is a foreign_key mapped to the primary key of `transaction_links`.
+
 
 

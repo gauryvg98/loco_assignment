@@ -40,4 +40,5 @@ public class TransactionController {
     public ResponseEntity<?> getAllTransactions(@RequestParam(name = "pageSize",required = false) Integer pageSize, @RequestParam(name = "pageNumber",required = false) Integer pageNumber) {
         return ResponseEntity.ok(this.transactionService.getAllTransactions(pageNumber, pageSize));
     }
+
 }

@@ -60,9 +60,9 @@ public class TransactionService {
         }
     }
 
-    public List<Long> filterByType(String type) {
+    public List<TransactionEntry> filterByType(String type) {
         List<TransactionEntity> transactionEntities = this.transactionRepository.findAllByType(type);
-        return CollectionUtils.isEmpty(transactionEntities) ? new ArrayList() : (List)transactionEntities.stream().map(TransactionEntity::getTransactionId).collect(Collectors.toList());
+        return CollectionUtils.isEmpty(transactionEntities) ? new ArrayList() : transactionEntities.stream().map(this::mapToEntry).collect(Collectors.toList());
     }
 
     public SumResponse getSumOfConnectedTransactions(Long transactionId) throws Exception {
