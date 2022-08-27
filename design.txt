@@ -8,3 +8,7 @@ Random thoughts during dev :
             below this, we will give support for our APIs :     add a txn, get a txn, filter by type and sum.
 
 
+-> Need to handle CORS on server-side. -> done
+
+
+

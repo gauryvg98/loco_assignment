@@ -2,8 +2,8 @@
 package com.loco.assessment.transaction_service.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 import javax.persistence.CascadeType;
@@ -21,13 +21,15 @@ import javax.persistence.Table;
 )
 @Getter
 @Setter
+@NoArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class TransactionLinkEntity {
     @Id
     @GeneratedValue(
             strategy = GenerationType.IDENTITY
     )
-    private Long id;
-    private String flatPath;
+    Long id;
+    String flatPath;
     @OneToMany(
             fetch = FetchType.LAZY,
             cascade = {CascadeType.PERSIST},

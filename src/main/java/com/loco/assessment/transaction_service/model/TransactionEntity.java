@@ -22,7 +22,6 @@ import javax.persistence.Table;
 )
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class TransactionEntity {

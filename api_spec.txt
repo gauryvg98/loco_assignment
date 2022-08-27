@@ -49,7 +49,7 @@ Core-Requirements :
         }
 
 
-APIs for UI :
+APIs specific to fetching tables :
 
 1. Fetch All Transactions :
     Request :
