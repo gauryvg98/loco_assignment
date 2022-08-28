@@ -1,14 +1,4 @@
-Random thoughts during dev :
 
--> supporting delete transaction operation : we would remove all associated child transactions along with the parent transaction.
-    we do this by removing all related links in the transaction_links table, and also delete corresponding rows in transactions table.
-
-
--> UI dev -> done : We'll just show the content of both the tables side by side.
-            below this, we will give support for our APIs :     add a txn, get a txn, filter by type and sum.
-
-
--> Need to handle CORS on server-side. -> done
 
 Assumptions :
 
@@ -110,7 +100,6 @@ Approach 3 (Modifications to Approach-2):
     We can either choose to evict these old cached-entries, or update them.
     1. Evicting old-cached entries would improve the consistency, but slightly increase the average latency of the fetch calls.
     2. Updating old-cached entries would improve the consistency, with no increase in average latency of the fetch calls.
-
 
 
 

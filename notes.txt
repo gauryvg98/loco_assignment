@@ -1,0 +1,11 @@
+
+
+-> supporting delete transaction operation : we would remove all associated child transactions along with the parent transaction.
+    we do this by removing all related links in the transaction_links table, and also delete corresponding rows in transactions table.
+
+
+-> UI dev -> done : We'll just show the content of both the tables side by side.
+            below this, we will give support for our APIs :     add a txn, get a txn, filter by type and sum.
+
+
+-> Need to handle CORS on server-side. -> done
