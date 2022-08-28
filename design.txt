@@ -30,6 +30,7 @@ and fetch queries can be optimised by creating appropriate indices.
 There are multiple ways we can handle the connected-sum-query requirement.
 
 Approach 1 :
+
     Since this relationship essentially represents an n-ary tree, where each node can have any number of children,
     We can recursively query the table on parent_id = curr_id, which would return us a list of all (grand^n)children of a transactionId,
     and we then add their values to get the result.
@@ -41,6 +42,7 @@ Approach 1 :
     In the worst case, when each transaction is connected to one child transaction, number of sequel queries would be order of number of transactions in the table.
 
 Approach 2 :
+
     A better solution would be to store the path from parent to a node along with the transaction itself.
     So in this scenario, when the save transaction API is called, we fetch the parent transaction, and fetch its path to root.
     We append parent_id to the parent's path to get the path of the child. Our path would look something like : "/1/2/3/".
@@ -61,6 +63,7 @@ Approach 2 :
 
 
 Approach 3 (Modifications to Approach-2):
+
     If we vertically partition the table in Approach-2, such that we extract the path-to-parent (lets call this flatPath) to a separate table (called transaction_links),
     we can handle data duplication by having a many-to-one relation between `transactions` and `transaction_links`.
 
