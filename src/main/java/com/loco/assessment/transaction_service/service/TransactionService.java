@@ -67,15 +67,11 @@ public class TransactionService {
 
     public SumResponse getSumOfConnectedTransactions(Long transactionId) throws Exception {
         String transactionLinkKey = "/" + transactionId + "/";
-        List<TransactionLinkEntity> linkEntities = this.transactionLinkService.getTransactionLinkIdsFromParentTransactionKey(transactionLinkKey);
+        List<TransactionLinkEntity> linkEntities = this.transactionLinkService.getTransactionLinksFromParentTransactionKey(transactionLinkKey);
         TransactionEntry transactionEntry = this.getTransactionById(transactionId);
         AtomicLong sum = new AtomicLong(transactionEntry.getValue());
         if (!CollectionUtils.isEmpty(linkEntities)) {
-            linkEntities.forEach((linkEntity) -> {
-                linkEntity.getTransactions().forEach((txn) -> {
-                    sum.set(sum.get() + txn.getValue());
-                });
-            });
+            linkEntities.forEach((linkEntity) -> linkEntity.getTransactions().forEach((txn) -> sum.set(sum.get() + txn.getValue())));
         }
         return new SumResponse(sum.get());
     }

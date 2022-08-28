@@ -3,23 +3,21 @@
 
 Content of write-up -> 
 
-1. Possible solutions to the sum problem : 
+1. Possible solutions to the sum problem : done
 
-2. Chosen Solution Design Discussion : 
-Iterations
-Schema
+2. Chosen Solution Design Discussion : done
+Iterations done
+Schema done
 
-3. Vertical Partitioning : Why? 
+3. Vertical Partitioning : Why? done
 
-4. Asymptotic Behaviour of APIs : 
+4. Asymptotic Behaviour of APIs : done
 
 5. 
-API Testing scripts? 
-Unit Tests?
+API Testing scripts? - not done
+Unit Tests? - not done
 
-6. Caching : Eviction Strategy?
-
-7. 
+6. Caching : Eviction Strategy? -> done
 
 
 

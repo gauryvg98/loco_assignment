@@ -59,7 +59,7 @@ public class TransactionLinkService {
         }
     }
 
-    public List<TransactionLinkEntity> getTransactionLinkIdsFromParentTransactionKey(String key) {
+    public List<TransactionLinkEntity> getTransactionLinksFromParentTransactionKey(String key) {
         List<TransactionLinkEntity> linkEntities = this.transactionLinkRepository.findByFlatPathContaining(key);
         return linkEntities;
     }

@@ -4,7 +4,7 @@ Random thoughts during dev :
     we do this by removing all related links in the transaction_links table, and also delete corresponding rows in transactions table.
 
 
--> UI dev : We'll just show the content of both the tables side by side.
+-> UI dev -> done : We'll just show the content of both the tables side by side.
             below this, we will give support for our APIs :     add a txn, get a txn, filter by type and sum.
 
 
@@ -12,42 +12,46 @@ Random thoughts during dev :
 
 Assumptions :
 
-1. TransactionId is unique, and no repeating transactionIds are going to be passed.
-If this is not the case, we would need to add a uniqueness constraint on the transactionId column in `transactions` table.
+    1. TransactionId is unique, and no repeating transactionIds are going to be passed.
+    If this is not the case, we would need to add a uniqueness constraint on the transactionId column in `transactions` table.
 
-2. Transactions are inserted in the order they would appear in the hierarchy tree, i.e, no parent is to be inserted after a child.
-Another way to put this would be that the parent should already be present in the db before a child is inserted.
+    2. Transactions are inserted in the order they would appear in the hierarchy tree, i.e, no parent is to be inserted after a child.
+    Another way to put this would be that the parent should already be present in the db before a child is inserted.
 
-3. API specifications given in problem statement are guidelines.
+    3. API specifications given in problem statement are guidelines and not enforceable. I have made slight changes in the API contract, for an easier UI integration.
+    Additionally, to ensure basic testable functionality of the UI, the server would need to support some additional APIs apart from the ones mentioned in the problem
+    statement.
 
-Iterations in design :
+Design:
 
-Inserting a transaction, fetching a transaction and filtering transactions on some property,
-these requirements are simple and can be handled through a single table which stores the transaction entities.
+Requirements of inserting a transaction, fetching a transaction and filtering transactions on some property can be handled through a single table which stores the transaction entities,
+and fetch queries can be optimised by creating appropriate indices.
 
 There are multiple ways we can handle the connected-sum-query requirement.
 
 Approach 1 :
-Since this relationship essentially represents an n-ary tree, where each node can have any number of children,
-We can recursively query the table on parent_id = curr_id, which would return us a list of all (grand^n)children of a transactionId,
-and we then add their values to get the result.
-But this, in practise, would require a large number of sql queries proportional to the depth of the hierarchy tree to fetch this data.
+    Since this relationship essentially represents an n-ary tree, where each node can have any number of children,
+    We can recursively query the table on parent_id = curr_id, which would return us a list of all (grand^n)children of a transactionId,
+    and we then add their values to get the result.
+    But this, in practise, would require a large number of sql queries proportional to the depth of the hierarchy tree to fetch this data.
 
-Drawbacks :
+    Drawbacks :
+
     Not scalable.
     In the worst case, when each transaction is connected to one child transaction, number of sequel queries would be order of number of transactions in the table.
 
 Approach 2 :
-A better solution would be to store the path from parent to a node along with the transaction itself.
-So in this scenario, when the save transaction API is called, we fetch the parent transaction, and fetch its path to root.
-We append parent_id to the parent's path to get the path of the child. Our path would look something like : "/1/2/3/".
+    A better solution would be to store the path from parent to a node along with the transaction itself.
+    So in this scenario, when the save transaction API is called, we fetch the parent transaction, and fetch its path to root.
+    We append parent_id to the parent's path to get the path of the child. Our path would look something like : "/1/2/3/".
 
-Now when we want to query for connected transactions, we just query the transactions for paths containing the given transactionId.
-MySQL for this would be : SELECT * FROM TRANSACTIONS WHERE path like '%/{txnId}/%';
+    Now when we want to query for connected transactions, we just query the transactions for paths containing the given transactionId.
+    MySQL for this would be : SELECT * FROM TRANSACTIONS WHERE path like '%/{txnId}/%';
 
-This essentially reduces the number of sequel queries to two during sum-query (initial design upper bounded this to O of (depth of hierarchy tree)
+    This essentially reduces the number of sequel queries to two during sum-query (initial design upper bounded this to O of (depth of hierarchy tree)
 
-Drawbacks:
+    Drawbacks:
+
     While we reduce the number of queries to fetch connected children vs approach 1, we also need to generate the path during save which is done by fetching the parent transaction.
     This means we end up using a fetch and an insert queries instead of a single insert query as in approach 1.
     Another possible issue with this approach would be data-replication.
@@ -55,11 +59,68 @@ Drawbacks:
     Also, like queries which are unbounded-from-start (like '%someval') cannot be optimized using standard column indices, they require FULLTEXT index creations,
     which inherently increase the disk and memory space, and also makes incoming writes slower.
 
-Approach 2.5 / 3 :
+
+Approach 3 (Modifications to Approach-2):
     If we vertically partition the table in Approach-2, such that we extract the path-to-parent (lets call this flatPath) to a separate table (called transaction_links),
     we can handle data duplication by having a many-to-one relation between `transactions` and `transaction_links`.
 
-    We add a link_id column to `transactions` which is a foreign_key mapped to the primary key of `transaction_links`.
+    We add a link_id column to `transactions` which is a foreign_key mapped to the id of `transaction_links`. This vertical partitioning correctly handles the data duplication
+    in our flatPath column, essentially storing unique paths to hierarchy-tree-root.
+
+    Drawbacks:
+
+    We would be storing additional long values (each 8 bytes) as link_id in `transactions` and id in `transaction_links`.
+
+
+    Schema :
+
+            CREATE TABLE transaction_links (
+                                               id bigint not null auto_increment,
+                                               type flatPath(255) not null
+            )engine=InnoDB;
+
+            CREATE FULLTEXT INDEX flat_path_index
+            ON transaction_links(flatPath);
+
+            CREATE TABLE transactions (
+                                          id bigint not null auto_increment,
+                                          transaction_id bigint not null,
+                                          value bingint not null,
+                                          type varchar(255),
+                                          link_id bigint,
+                                          primary key (id),
+                                          foreign key (link_id) references transaction_links(flatPath)
+            )engine=InnoDB;
+
+            CREATE INDEX transaction_id_index ON transactions (transaction_id);
+
+            CREATE INDEX type_index ON transactions (type);
+
+
+    Caching connected-sum-queries:
+
+    We could cache the calculated sum in redis (or an in-memory cache, or a concurrent HashMap) to reduce the response times of subsequent calls, at the cost of consistency,
+    since every insertion of a child transaction would impact the sum of all connected parent transactions.
+    We could improve on the consistency trade-off by having a proper cache eviction strategy in place, where we update the parent sum transactions
+    already present in cache upon insertion of a new connected-transaction
+    We do this asynchronously or event-based, where we check if parent-sum-query has been cached for any of the parents in the connected-transactions-tree.
+    We can either choose to evict these old cached-entries, or update them.
+    1. Evicting old-cached entries would improve the consistency, but slightly increase the average latency of the fetch calls.
+    2. Updating old-cached entries would improve the consistency, with no increase in average latency of the fetch calls.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

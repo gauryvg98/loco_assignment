@@ -36,5 +36,5 @@ public class TransactionLinkEntity {
             mappedBy = "transactionLink"
     )
     @JsonManagedReference
-    private List<TransactionEntity> transactions;
+    List<TransactionEntity> transactions;
 }
