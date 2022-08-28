@@ -29,11 +29,13 @@ public class TransactionLinkService {
             unless = "#result == null"
     )
     public TransactionLinkEntity getLinkByPath(String path) {
-        return StringUtils.isEmpty(path) ? null : this.transactionLinkRepository.findByFlatPath(path).orElse(null);
+        return this.transactionLinkRepository.findByFlatPath(path).orElse(null);
     }
 
     public List<TransactionLinkEntry> getAllLinks(Integer pageSize, Integer pageNumber) {
-        return pageSize != null && pageNumber != null ? this.transactionLinkRepository.findAll(PageRequest.of(pageNumber, pageSize)).stream().map(this::mapToEntry).collect(Collectors.toList()) : this.transactionLinkRepository.findAll().stream().map(this::mapToEntry).collect(Collectors.toList());
+        return (pageSize != null && pageNumber != null) ?
+                this.transactionLinkRepository.findAll(PageRequest.of(pageNumber, pageSize)).stream().map(this::mapToEntry).collect(Collectors.toList())
+                : this.transactionLinkRepository.findAll().stream().map(this::mapToEntry).collect(Collectors.toList());
     }
 
     @Transactional(
@@ -46,17 +48,18 @@ public class TransactionLinkService {
     public TransactionLinkEntity saveTransactionLinkIfNotPresent(String path) {
         if (StringUtils.isEmpty(path)) {
             return null;
-        } else {
-            TransactionLinkEntity existingEntity = this.getLinkByPath(path);
-            if (existingEntity == null) {
-                existingEntity = new TransactionLinkEntity();
-                existingEntity.setId(null);
-                existingEntity.setFlatPath(path);
-                existingEntity = this.transactionLinkRepository.save(existingEntity);
-            }
-
-            return existingEntity;
         }
+
+        TransactionLinkEntity existingEntity = this.getLinkByPath(path);
+
+        if (existingEntity == null) {
+            existingEntity = new TransactionLinkEntity();
+            existingEntity.setId(null);
+            existingEntity.setFlatPath(path);
+            existingEntity = this.transactionLinkRepository.save(existingEntity);
+        }
+
+        return existingEntity;
     }
 
     public List<TransactionLinkEntity> getTransactionLinksFromParentTransactionKey(String key) {

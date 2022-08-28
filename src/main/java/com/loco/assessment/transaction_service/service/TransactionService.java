@@ -2,6 +2,7 @@
 package com.loco.assessment.transaction_service.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.loco.assessment.transaction_service.cache.TransactionCacheHandler;
 import com.loco.assessment.transaction_service.model.TransactionEntity;
 import com.loco.assessment.transaction_service.model.TransactionLinkEntity;
 import com.loco.assessment.transaction_service.pojo.SumResponse;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import com.loco.assessment.transaction_service.utils.TransactionLinkParseUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -27,12 +29,16 @@ import org.springframework.util.CollectionUtils;
 public class TransactionService {
     final TransactionRepository transactionRepository;
     final TransactionLinkService transactionLinkService;
+    final TransactionCacheHandler cacheHandler;
     final ObjectMapper objectMapper;
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void saveTransaction(TransactionEntry transactionEntry, Long transactionId) throws Exception {
+
         transactionEntry.setTransactionId(transactionId);
+
         TransactionEntity parentTransaction = null;
+
         if (transactionEntry.getParentId() != null) {
             Optional<TransactionEntity> parentTransactionEntityOptional = this.transactionRepository.findByTransactionId(transactionEntry.getParentId());
             if (!parentTransactionEntityOptional.isPresent()) {
@@ -43,13 +49,21 @@ public class TransactionService {
         }
 
         TransactionEntity transactionEntity = this.mapToEntity(transactionEntry);
+
         transactionEntity.setId(null);
         transactionEntity.setTransactionLink(this.generateTransactionLink(parentTransaction));
+
         this.transactionRepository.save(transactionEntity);
+
+        if(transactionEntity.getTransactionLink() != null){
+            cacheHandler.updateCachedConnectedSum(transactionEntity.getTransactionLink().getFlatPath(),transactionEntity.getValue());
+        }
     }
 
     public TransactionEntry getTransactionById(Long transactionId) throws Exception {
+
         Optional<TransactionEntity> transactionEntityOptional = this.transactionRepository.findByTransactionId(transactionId);
+
         if (!transactionEntityOptional.isPresent()) {
             throw new Exception("TransactionId not found");
         } else {
@@ -66,48 +80,43 @@ public class TransactionService {
     }
 
     public SumResponse getSumOfConnectedTransactions(Long transactionId) throws Exception {
-        String transactionLinkKey = "/" + transactionId + "/";
+
+        Long cachedSum = cacheHandler.getCachedConnectedSum(transactionId);
+
+        if(cachedSum != null){
+            return new SumResponse(cachedSum);
+        }
+
+        String transactionLinkKey = TransactionLinkParseUtil.generateTransactionLinkKey(transactionId);
+
         List<TransactionLinkEntity> linkEntities = this.transactionLinkService.getTransactionLinksFromParentTransactionKey(transactionLinkKey);
+
         TransactionEntry transactionEntry = this.getTransactionById(transactionId);
+
         AtomicLong sum = new AtomicLong(transactionEntry.getValue());
+
         if (!CollectionUtils.isEmpty(linkEntities)) {
             linkEntities.forEach((linkEntity) -> linkEntity.getTransactions().forEach((txn) -> sum.set(sum.get() + txn.getValue())));
         }
+
+        cacheHandler.insertConnectedSumIntoCache(transactionId,sum.get());
+
         return new SumResponse(sum.get());
     }
 
     private TransactionLinkEntity generateTransactionLink(TransactionEntity parentTransaction) {
-        String path;
-        if (parentTransaction == null) {
-            path = null;
-        } else if (parentTransaction != null && parentTransaction.getTransactionLink() == null) {
-            path = "/" + parentTransaction.getTransactionId() + "/";
-        } else {
-            String var10000 = parentTransaction.getTransactionLink().getFlatPath();
-            path = var10000 + parentTransaction.getTransactionId() + "/";
-        }
-
-        return this.transactionLinkService.saveTransactionLinkIfNotPresent(path);
+        return this.transactionLinkService.saveTransactionLinkIfNotPresent(TransactionLinkParseUtil.generateTransactionLinkKey(parentTransaction));
     }
 
     public List<TransactionEntry> getAllTransactions(Integer page, Integer size) {
-        if (page != null && size != null) {
-            if (size < 1) {
-                size = 150;
-            }
-
-            if (page < 0) {
-                page = 0;
-            }
-
-            return this.transactionRepository.findAll(PageRequest.of(page, size)).stream().map(this::mapToEntry).collect(Collectors.toList());
-        } else {
-            return this.transactionRepository.findAll().stream().map(this::mapToEntry).collect(Collectors.toList());
-        }
+        return (page != null && size != null) ?
+                this.transactionRepository.findAll(PageRequest.of(page, size)).stream().map(this::mapToEntry).collect(Collectors.toList())
+                : this.transactionRepository.findAll().stream().map(this::mapToEntry).collect(Collectors.toList());
     }
 
     private TransactionEntry mapToEntry(TransactionEntity transactionEntity) {
         TransactionEntry transactionEntry = this.objectMapper.convertValue(transactionEntity, TransactionEntry.class);
+
         if (transactionEntity.getTransactionLink() != null) {
             transactionEntry.setLinkId(transactionEntity.getTransactionLink().getId());
         }

@@ -1,4 +1,18 @@
+Web-page url : https://gauryvg98-github-io.vercel.app/
 
+Backend Server url : https://transaction-service-loco.herokuapp.com/
+
+Details :
+1. Backend deployed on Heroku and Frontend deployed on Vercel.
+2. H2 in-memory sql db is used.
+
+Running and Testing the code :
+
+1. Set your java runtime version to 11.
+2. Install dependencies via maven.
+3. Run the server.
+4. Insert samples transactions into in-memory db by executing the `insert_transactions.sh` script (please change the endpoint in the curl commands appropriately)
+5. Refer `api_spec.txt` for info about API calls
 
 Assumptions :
 
@@ -52,7 +66,7 @@ Approach 2 :
     which inherently increase the disk and memory space, and also makes incoming writes slower.
 
 
-Approach 3 (Modifications to Approach-2):
+Approach 3 :
 
     If we vertically partition the table in Approach-2, such that we extract the path-to-parent (lets call this flatPath) to a separate table (called transaction_links),
     we can handle data duplication by having a many-to-one relation between `transactions` and `transaction_links`.
@@ -94,12 +108,15 @@ Approach 3 (Modifications to Approach-2):
 
     We could cache the calculated sum in redis (or an in-memory cache, or a concurrent HashMap) to reduce the response times of subsequent calls, at the cost of consistency,
     since every insertion of a child transaction would impact the sum of all connected parent transactions.
-    We could improve on the consistency trade-off by having a proper cache eviction strategy in place, where we update the parent sum transactions
+
+    We could improve on this consistency trade-off by having a proper cache eviction strategy in place, where we update the parent sum transactions
     already present in cache upon insertion of a new connected-transaction
+
     We do this asynchronously or event-based, where we check if parent-sum-query has been cached for any of the parents in the connected-transactions-tree.
-    We can either choose to evict these old cached-entries, or update them.
-    1. Evicting old-cached entries would improve the consistency, but slightly increase the average latency of the fetch calls.
-    2. Updating old-cached entries would improve the consistency, with no increase in average latency of the fetch calls.
+
+    We can either choose to evict these old cached-entries, or update them :
+    -> Evicting old-cached entries would improve the consistency, but slightly increase the average latency of the fetch calls.
+    -> Updating old-cached entries would improve the consistency, with no increase in average latency of the fetch calls, but this would lead to slightly more server load
 
 
 
